@@ -112,240 +112,117 @@ class DataTable():
 
 
     # -----------------------------------------------------------------------------
-    # Loading from CSV
+    # Row ingestion - shared by every loader
 
-    def _LTL_method(self, data, **kwargs) -> None:
-        # Create output container: a list of rows as lists, e.g. [[1, "a"], [2, "b"]]
-        rows = []
+    def _set_headers(self, row, pk) -> None:
+        for col_index, element in enumerate(row):
+            header = str(element)
+            self.headers.append(header)
+            self.header_index[header] = col_index
+            if pk == header:
+                self.pk = pk
+                self.pk_col_index = col_index
+        if pk and not self.pk:
+            print(f'[WARNING] Primary key {pk!r} not found in headers; continuing without a primary key')
+        self.n_cols = len(self.headers)
+        self.includes_headers = True
 
-        # ------------------------------------------------------------------------------------- ^^^^
-        # Gather from kwargs:
-        pk = kwargs.pop("pk", None)
+    def _set_placeholder_headers(self, row) -> None:
+        # No header row: name columns col_1, col_2, ... from the first row's width
+        self.headers = [f'col_{n_col}' for n_col in range(1, len(row) + 1)]
+        self.n_cols = len(self.headers)
+
+    def _parse_row(self, row, n_row, convert) -> list:
+        # Returns the cleaned row, or raises with the reason it was skipped
+        if not isinstance(row, list):
+            raise TypeError(f'Row {n_row}: expected a list, got {type(row).__name__}; skipping row')
+        if len(row) > self.n_cols:
+            raise IndexError(f'Row {n_row}: more values than columns (expected {self.n_cols}); skipping row')
+        if len(row) < self.n_cols:
+            raise IndexError(f'Row {n_row}: expected {self.n_cols} values, got {len(row)}; skipping row')
+
+        row_data = []
+        for n_col, element in enumerate(row, start=1):
+            if self.pk and n_col == self.pk_col_index + 1:  # Add 1 because index starts at 0
+                if element is None or str(element).strip() == '':  # 0 is a valid key
+                    raise ValueError(f'Row {n_row}: primary key value is empty; skipping row')
+                if str(element) in self.pk_hashmap:
+                    raise ValueError(f'Row {n_row}: duplicate primary key {str(element)!r}; skipping row')
+                row_data.append(str(element))
+                continue
+
+            if not isinstance(element, (str, int, float, Decimal, date, type(None))):
+                raise TypeError(f'Row {n_row}, column {n_col}: unsupported type {type(element).__name__}; skipping row')
+            row_data.append(self._assigntype(element) if convert else element)
+
+        return row_data
+
+    def _ingest_rows(self, rows_iter, pk=None, includes_headers=True, convert=True) -> None:
+        # Builds self.table as LTL from any iterable of rows.
+        # convert=False keeps values as-is (CSV values stay strings).
         if pk:
             print(f'[INFO] Primary key set to {pk!r}')
-
-        includes_headers = kwargs.pop("includes_headers", False)
         if includes_headers:
             print('[INFO] Treating first row as headers')
 
-        # ------------------------------------------------------------------------------------- ^^^^
-        # Start iterating through every row
-
-        for n_row, row in enumerate(data, start=1):
+        rows = []
+        for n_row, row in enumerate(rows_iter, start=1):
             try:
-                if not isinstance(row, list):
-                    raise TypeError(f'Row {n_row}: expected a list, got {type(row).__name__}; skipping row') # If row not list, SKIP
-                
-                # For each element in this row append to the total to the list:
-                row_data = []
-                # ------------------------------------------------------------------------------------- XXXX
-                # Header assignment
-
-                # If data includes headers; use placeholder integers
-                # NOTE: While self.headers exists, includes_headers will still be false.
-                if not includes_headers and not self.headers:
-                    for n_col, _ in enumerate(row, start=1):
-                        placeholder = 'col_' + str(n_col)
-                        self.headers.append(placeholder)
-                    self.n_cols = len(self.headers)
+                # First row decides the headers
+                if not self.headers:
+                    if not isinstance(row, list):
+                        raise TypeError(f'Row {n_row}: expected a list, got {type(row).__name__}; skipping row')
+                    if includes_headers:
+                        self._set_headers(row, pk)
+                        rows.append(self.headers)
+                        continue  # Header row is not data
+                    self._set_placeholder_headers(row)
                     rows.append(self.headers)
 
-                # If headers
-                if includes_headers and not self.headers:
-                    for col_index, element in enumerate(row, start=0):
-                        header = str(element)
-                        self.headers.append(header)
-                        self.header_index[header] = col_index
-                        if pk == header:
-                            self.pk = pk
-                            self.pk_col_index = col_index
-                            self.pk_hashmap = {}     
-                    if pk and not self.pk:
-                        print(f'[WARNING] Primary key {pk!r} not found in headers; continuing without a primary key')               
-                    self.n_cols = len(self.headers)  # <-- Set column count
-                    rows.append(self.headers)
-                    self.includes_headers = True  # <-- Confirmed Headers
-                    continue
-                    
-                # -------------------------------------------------------------------------------------
-                # Append each element in row into an inner list
-
-                for n_col, element in enumerate(row, start=1):
-                    pk_element = False
-
-                    # Check for PK dupe
-                    if self.pk and n_col == self.pk_col_index + 1: # Add 1 because index starts at 0
-                            if not element:
-                                raise ValueError(f'Row {n_row}: primary key value is empty; skipping row')
-                            if str(element) in self.pk_hashmap:
-                                raise ValueError(f'Row {n_row}: duplicate primary key {str(element)!r}; skipping row')
-                            pk_element = True
-
-                    # -------------------------------------------------------------------------------------
-
-                    if not isinstance(element, (str, int, float, Decimal, date, type(None))):
-                        raise TypeError(f'Row {n_row}, column {n_col}: unsupported type {type(element).__name__}; skipping row')
-                    if n_col > len(self.headers):
-                        raise IndexError(f'Row {n_row}: more values than columns (expected {len(self.headers)}); skipping row')
-                
-                    # Finally, append the element to row data
-                    if pk_element:
-                        row_data.append(str(element))
-                    else:
-                        row_data.append(self._assigntype(element))
-
-                # -------------------------------------------------------------------------------------
-                # Check if row data is consistent with column count scanned from row 1
-                if len(row_data) != self.n_cols:
-                    raise IndexError(f'Row {n_row}: expected {self.n_cols} values, got {len(row_data)}; skipping row')
-
-                # Finally, if no errors raised, append row to table.
+                row_data = self._parse_row(row, n_row, convert)
                 rows.append(row_data)
-                if self.pk: # Only record PK once the row is accepted
-                    self.pk_hashmap[str(row_data[self.pk_col_index])] = len(rows) - 1
-                # -------------------------------------------------------------------------------------
+                if self.pk:  # Only record PK once the row is accepted
+                    self.pk_hashmap[row_data[self.pk_col_index]] = len(rows) - 1
 
             except Exception as e:
                 print(f'[ERROR] {e}')
-                continue
 
-        # Once finished, overwrite table:
         print(f'[INFO] Load complete: {len(rows) - 1} rows loaded')
         self.table = rows
         self.format = 'LTL'
-        return True
-
-
-
-    def _CSV_method(self, abs_path, **kwargs) -> None:
-        # Create output container: a list of rows as lists, e.g. [[1, "a"], [2, "b"]] 
-        rows = []
-
-        # -------------------------------------------------------------------------------------
-        # Gather from kwargs:
-        pk = kwargs.pop("pk", None)
-        if pk:
-            print(f'[INFO] Primary key set to {pk!r}')
-
-        includes_headers = kwargs.pop("includes_headers", False)
-        if includes_headers:
-            print('[INFO] Treating first row as headers')
-
-        # -------------------------------------------------------------------------------------
-        # Open CSV and start iterating per row in CSV
-        with open(abs_path, newline="", encoding='utf-8-sig') as f:
-            r = csv.reader(f)
-            for n_row, row in enumerate(r, start=1):
-    
-                try:
-                    # For each element in this row append to the total to the list:
-                    row_data = []
-                    # ------------------------------------------------------------------------------------- XXXX
-                    # Header assignment
-
-                    # If data includes headers; use placeholder integers
-                    # NOTE: While self.headers exists, includes_headers will still be false.
-                    if not includes_headers and not self.headers:
-                        for n_col, _ in enumerate(row, start=1):
-                            placeholder = 'col_' + str(n_col)
-                            self.headers.append(placeholder)
-                        self.n_cols = len(self.headers)
-                        rows.append(self.headers)
-
-                    # If headers
-                    if includes_headers and not self.headers:
-                        for col_index, element in enumerate(row, start=0):
-                            header = str(element)
-                            self.headers.append(header)
-                            self.header_index[header] = col_index
-                            if pk == header:
-                                self.pk = pk
-                                self.pk_col_index = col_index
-                                self.pk_hashmap = {}     
-                        if pk and not self.pk:
-                            print(f'[WARNING] Primary key {pk!r} not found in headers; continuing without a primary key')               
-                        self.n_cols = len(self.headers)  # <-- Set column count
-                        rows.append(self.headers)
-                        self.includes_headers = True  # <-- Confirmed Headers
-                        continue
-                        
-                    # -------------------------------------------------------------------------------------
-                    # Append each element in row into an inner list
-
-                    for n_col, element in enumerate(row, start=1):
-
-                        # Check for PK dupe
-                        if self.pk and n_col == self.pk_col_index + 1: # Add 1 because index starts at 0
-                                if not element:
-                                    raise ValueError(f'Row {n_row}: primary key value is empty; skipping row')
-                                if str(element) in self.pk_hashmap:
-                                    raise ValueError(f'Row {n_row}: duplicate primary key {str(element)!r}; skipping row')
-
-                        # -------------------------------------------------------------------------------------
-
-                        if n_col > len(self.headers):
-                            raise IndexError(f'Row {n_row}: more values than columns (expected {len(self.headers)}); skipping row')
-                    
-                        # Finally, append the element to row data
-                        row_data.append(element)
-
-                    # -------------------------------------------------------------------------------------
-                    # Check if row data is consistent with column count scanned from row 1
-                    if len(row_data) != self.n_cols:
-                        raise IndexError(f'Row {n_row}: expected {self.n_cols} values, got {len(row_data)}; skipping row')
-
-                    # Finally, if no errors raised, append row to table.
-                    rows.append(row_data)
-                    if self.pk: # Only record PK once the row is accepted
-                        self.pk_hashmap[str(row_data[self.pk_col_index])] = len(rows) - 1
-                    # -------------------------------------------------------------------------------------
-
-                except Exception as e:
-                    print(f'[ERROR] {e}')
-                    continue
-
-        # Once finished, overwrite table:
-        print(f'[INFO] Load complete: {len(rows) - 1} rows loaded')
-        self.table = rows
-        self.format = 'LTL'
-        return True
 
     # -----------------------------------------------------------------------------
     # Loading functions
 
-    def load_from(self, data, pk=None, includes_headers=True) -> None:
+    def _load(self, ingest, pk, includes_headers) -> None:
         if pk and not includes_headers:
             print('[WARNING] Primary key specified but includes_headers is False; continuing without a primary key')
-            pk=None
+            pk = None
 
         # Clear object memory
         self._defaults()
 
         try:
+            ingest(pk, includes_headers)
+        except Exception as e:
+            print(f'[ERROR] {e}')
+
+    def load_from(self, data, pk=None, includes_headers=True) -> None:
+        def ingest(pk, includes_headers):
             method = self._checkformat(data)
             print(f'[INFO] Detected format: {method}')
-
-            if method == 'LTL':
-                self._LTL_method(data=data, pk=pk, includes_headers=includes_headers)
-            else:
+            if method != 'LTL':
                 raise TypeError(f'Unsupported format {method!r}; only LTL is currently supported')
+            self._ingest_rows(data, pk, includes_headers)
 
-        except Exception as e:
-            print(f'[ERROR] {e}')
-
+        self._load(ingest, pk, includes_headers)
 
     def load_csv(self, abs_path, pk=None, includes_headers=True) -> None:
-        if pk and not includes_headers:
-            print('[WARNING] Primary key specified but includes_headers is False; continuing without a primary key')
-            pk=None
+        def ingest(pk, includes_headers):
+            with open(abs_path, newline='', encoding='utf-8-sig') as f:
+                self._ingest_rows(csv.reader(f), pk, includes_headers, convert=False)
 
-        # Clear object memory
-        self._defaults()
-
-        try:
-            self._CSV_method(abs_path=abs_path, pk=pk, includes_headers=includes_headers)
-        except Exception as e:
-            print(f'[ERROR] {e}')
+        self._load(ingest, pk, includes_headers)
 
 
 if __name__ == '__main__':
