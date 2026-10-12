@@ -28,17 +28,31 @@ Replace `../gbear_toolkit_package` with the actual path to this folder (absolute
 
 ### Install from GitHub
 
-Once this repo is pushed to GitHub:
-
 ```
-uv add git+https://github.com/<your-username>/gbear_toolkit_package
+uv add git+https://github.com/goopabear/gbear_toolkit_package
 ```
 
 ```
-pip install git+https://github.com/<your-username>/gbear_toolkit_package
+pip install git+https://github.com/goopabear/gbear_toolkit_package
 ```
 
 Add `@<tag-or-commit>` to the end of the URL to pin a specific version.
+
+### Update
+
+Editable installs from a local folder are always current, so there's nothing to update.
+
+For a GitHub install, pull the latest commit:
+
+```
+uv sync --upgrade-package gbear-toolkit
+```
+
+```
+pip install --force-reinstall git+https://github.com/goopabear/gbear_toolkit_package
+```
+
+`--force-reinstall` is needed because pip skips reinstalling when the version number in `pyproject.toml` hasn't changed.
 
 ### Import
 
