@@ -57,25 +57,30 @@ class TableFunctions():
     # Editting table:
 
     def remove_col(self, *headers: str):
-        remaining = []
+        # Validate that arg headers are valid
         for h in headers:
             try:
                 self._col_index(h)
             except Exception as e:
                 print(f'[ERROR] {e}')
 
+        #-------------------------------------------------------
+        # Get indexes of headers NOT included in the arguments
+        remaining = []
         for existing, column in self.header_index.items():
             if existing not in headers:
                 remaining.append(column)
 
+        #-------------------------------------------------------
+        # Filter table with using remaining indexes
         new_table = []
-
         for row in self.table:
             row_data =[]
             for col in remaining:
                 row_data.append(row[col])
             new_table.append(row_data)
-
+        #-------------------------------------------------------
+        # Update class attributes
         self.table = new_table
         self.n_cols = len(new_table[0])
         self.headers = new_table[0]
