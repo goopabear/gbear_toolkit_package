@@ -2,7 +2,9 @@ from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
 import csv
 
-class DataTable():
+from .table_export import Export
+
+class DataTable(Export):
     def __init__(self, table_name: str = 'data_table'):
         # Table starts as empty. Loads data from CSV and/or append from in-memory data.
         self.table_name = table_name
