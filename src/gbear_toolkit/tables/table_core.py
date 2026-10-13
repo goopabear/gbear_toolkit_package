@@ -119,7 +119,7 @@ class DataTable(TableFunctions, Export):
 
     def _set_headers(self, row, pk) -> None:
         for col_index, element in enumerate(row):
-            header = str(element)
+            header = str(element.strip())
             self.headers.append(header)
             self.header_index[header] = col_index
             if pk == header:

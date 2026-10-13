@@ -33,9 +33,10 @@ class TableFunctions():
         self.pk_col_index: int | None = None
         self.pk_hashmap: dict[str, int] = {}
 
+    #==============================================================================================
+    # Index helper functions:
 
-    def _get_header_col_index(self, header: str) -> int | Exception:
-        print(self.header_index)
+    def _col_index(self, header: str) -> int:
         if header == self.pk:
             raise ValueError(f'Must use a different header than the {self.pk!r} primary key')
         if header in self.headers:
@@ -44,18 +45,60 @@ class TableFunctions():
             raise ValueError(f'{header!r} not found in the header row')
 
 
-    def _get_pk_row_index(self, pkid: str) -> int | Exception:
-        if pkid in self.pk_hashmap:
-            return self.pk_hashmap[pkid]
+    def _row_index(self, pk_value: str) -> int:
+        if not self.pk:
+            raise ValueError('Row indexing only works with PK enabled')
+        if pk_value in self.pk_hashmap:
+            return self.pk_hashmap[pk_value]
         else:
-            raise ValueError(f'{pkid!r} not found in the {self.pk!r} column')
+            raise ValueError(f'{pk_value!r} not found in the {self.pk!r} column')
 
+    #==============================================================================================
+    # Editting table:
 
-    def get_pkvalue(self, pkid: str, header: str):
+    def remove_col(self, *headers: str):
+        remaining = []
+        for h in headers:
+            try:
+                self._col_index(h)
+            except Exception as e:
+                print(f'[ERROR] {e}')
+
+        for existing, column in self.header_index.items():
+            if existing not in headers:
+                remaining.append(column)
+
+        new_table = []
+
+        for row in self.table:
+            row_data =[]
+            for col in remaining:
+                row_data.append(row[col])
+            new_table.append(row_data)
+
+        self.table = new_table
+        self.n_cols = len(new_table[0])
+        self.headers = new_table[0]
+        self.header_index = {}
+        for index, header in enumerate(new_table[0]):
+            self.header_index[header] = index
+
+    #==============================================================================================
+    # Returning table values:
+
+    def get_cell(self, pk_value: str, header: str):
         try:
             col_n = self._get_header_col_index(header)
-            row_n = self._get_pk_row_index(pkid)
+            row_n = self._get_pk_row_index(pk_value)
             return self.table[row_n][col_n]
+        except Exception as e:
+            print(f'[ERROR] {e}')
+            return None
+
+    def get_row(self, pk_value: str):
+        try:
+            row_n = self._get_pk_row_index(pk_value)
+            return self.table[row_n]
         except Exception as e:
             print(f'[ERROR] {e}')
             return None
