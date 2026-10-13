@@ -3,8 +3,9 @@ from decimal import Decimal, InvalidOperation
 import csv
 
 from .table_export import Export
+from .table_functions import TableFunctions
 
-class DataTable(Export):
+class DataTable(TableFunctions, Export):
     def __init__(self, table_name: str = 'data_table'):
         # Table starts as empty. Loads data from CSV and/or append from in-memory data.
         self.table_name = table_name
