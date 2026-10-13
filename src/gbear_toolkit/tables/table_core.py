@@ -223,36 +223,3 @@ class DataTable():
                 self._ingest_rows(csv.reader(f), pk, includes_headers, convert=False)
 
         self._load(ingest, pk, includes_headers)
-
-
-if __name__ == '__main__':
-
-    # TEST SCRIPT
-    # -------------------------------------------------------------------------------------
-    import os
-    import importlib.util
-
-    # Sample data for each format lives in tests/data/table_formats: ltl.py, ltd.py, dtl.py, dtd.py
-    repo_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
-    formats_dir = os.path.abspath(os.path.join(repo_root, 'tests', 'data', 'table_formats'))
-
-    # Change the filename here to test a different format
-    path = os.path.join(formats_dir, 'ltl.py')
-
-    # Loads a sample file from path and returns its DATA
-    def load_sample(path: str):
-        if not os.path.isfile(path):
-            raise FileNotFoundError(f'[ERROR] Sample file not found at {path}')
-        spec = importlib.util.spec_from_file_location('sample', path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module.DATA
-
-    data = load_sample(path)  # <---- Sample Data
-    print(f'[INFO] Loaded sample from {path}')
-
-    # -------------------------------------------------------------------------------------
-
-    d = DataTable()
-    d.load_from(data, pk='asin')
-    print(d.header_index)

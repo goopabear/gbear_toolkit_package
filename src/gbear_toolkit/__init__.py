@@ -1,3 +1,5 @@
-from .table_object import DataTable
+from .project_paths import ProjectPaths
+
+
 
 __all__ = ['DataTable']
