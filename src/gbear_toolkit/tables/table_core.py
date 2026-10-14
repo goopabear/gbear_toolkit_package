@@ -190,7 +190,7 @@ class DataTable(TableFunctions, Export):
             except Exception as e:
                 print(f'[ERROR] {e}')
 
-        print(f'[INFO] Load complete: {len(rows) - 1} rows loaded')
+        print(f'[INFO] Load complete: {len(rows)} rows loaded')
         self.table = rows
         self.format = 'LTL'
 

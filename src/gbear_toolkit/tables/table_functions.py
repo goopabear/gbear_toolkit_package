@@ -56,6 +56,10 @@ class TableFunctions():
 
     def remove_col(self, *headers: str):
         # Validate that arg headers are valid
+        if not headers:
+            print('No headers specified')
+            return
+        
         for h in headers:
             if h == self.pk:
                 raise ValueError(f'[ERROR] Cannot remove the PK column {h!r}')
@@ -64,12 +68,13 @@ class TableFunctions():
 
         #-------------------------------------------------------
         # Get indexes of headers NOT included in the arguments
-        remaining = []
+        remaining: list[int] = []
+
         for existing, column_index in self.header_index.items():
             if existing not in headers:
                 remaining.append(column_index)
-        if existing < 2:
-            raise ValueError(f'[ERROR] At least two columns, including PK, must remain')
+        if len(existing) < 1:
+            raise ValueError(f'[ERROR] At least one column, PK, must remain')
 
         #-------------------------------------------------------
         # Filter table with using remaining indexes
@@ -101,7 +106,7 @@ class TableFunctions():
             print(f'[ERROR] {e}')
             return None
 
-    def get_row(self, pk_value: str):
+    def get_row(self, pk_value: str) -> list:
         try:
             row_n = self._row_index(pk_value)
             return self.table[row_n]
@@ -110,4 +115,21 @@ class TableFunctions():
             return None
 
 
+    def get_col(self, header: str, col_header=True) -> list:
+        try:
+            if col_header:
+                index=0
+            else:
+                index=1
 
+            column = []
+            col_index = self._col_index(header)
+
+            for row in self.table[index:]:
+                column.append(row[col_index])
+
+            return column
+        
+        except Exception as e:
+            print(f'[UNEXPECTED_ERROR] {e}')
+            return None
