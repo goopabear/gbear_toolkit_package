@@ -37,8 +37,6 @@ class TableFunctions():
     # Index helper functions:
 
     def _col_index(self, header: str) -> int:
-        if header == self.pk:
-            raise ValueError(f'Must use a different header than the {self.pk!r} primary key')
         if header in self.headers:
             return self.header_index[header]
         else:
@@ -59,17 +57,19 @@ class TableFunctions():
     def remove_col(self, *headers: str):
         # Validate that arg headers are valid
         for h in headers:
-            try:
-                self._col_index(h)
-            except Exception as e:
-                print(f'[ERROR] {e}')
+            if h == self.pk:
+                raise ValueError(f'[ERROR] Cannot remove the PK column {h!r}')
+            if not h in self.headers:
+                print(f'[WARNING] {h!r} not found in table headers')
 
         #-------------------------------------------------------
         # Get indexes of headers NOT included in the arguments
         remaining = []
-        for existing, column in self.header_index.items():
+        for existing, column_index in self.header_index.items():
             if existing not in headers:
-                remaining.append(column)
+                remaining.append(column_index)
+        if existing < 2:
+            raise ValueError(f'[ERROR] At least two columns, including PK, must remain')
 
         #-------------------------------------------------------
         # Filter table with using remaining indexes
@@ -79,6 +79,7 @@ class TableFunctions():
             for col in remaining:
                 row_data.append(row[col])
             new_table.append(row_data)
+
         #-------------------------------------------------------
         # Update class attributes
         self.table = new_table
@@ -93,8 +94,8 @@ class TableFunctions():
 
     def get_cell(self, pk_value: str, header: str):
         try:
-            col_n = self._get_header_col_index(header)
-            row_n = self._get_pk_row_index(pk_value)
+            col_n = self._col_index(header)
+            row_n = self._row_index(pk_value)
             return self.table[row_n][col_n]
         except Exception as e:
             print(f'[ERROR] {e}')
@@ -102,7 +103,7 @@ class TableFunctions():
 
     def get_row(self, pk_value: str):
         try:
-            row_n = self._get_pk_row_index(pk_value)
+            row_n = self._row_index(pk_value)
             return self.table[row_n]
         except Exception as e:
             print(f'[ERROR] {e}')
