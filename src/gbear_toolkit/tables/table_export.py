@@ -9,7 +9,7 @@ class Export():
             stamp = datetime.now().strftime("_%Y_%m_%d_%H%M%S")
 
         file = f"{filename}{stamp}.csv"
-        output_path = abs_path + file
+        output_path = abs_path + os.sep + file
 
         with open(output_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
