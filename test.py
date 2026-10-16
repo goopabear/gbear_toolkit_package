@@ -3,5 +3,7 @@ from src.gbear_toolkit import ProjectPaths
 
 
 app = DataTable()
+p = ProjectPaths('gbear_toolkit_package')
 
-app.convert_dtd()
+app.load_csv(abs_path=p.user_select(), filter_headers='title')
+print(app.table)

@@ -80,8 +80,7 @@ class DataTable(TableFunctions, Convert, Export):
                 pass
 
         return s
-
-
+    
     # -----------------------------------------------------------------------------
     # First, loading from in-memory: LTL and LTD only.
 
@@ -119,14 +118,22 @@ class DataTable(TableFunctions, Convert, Export):
     # -----------------------------------------------------------------------------
     # Row ingestion - shared by every loader
 
-    def _set_headers(self, row, pk) -> None:
+    def _set_headers(self, row, pk, filter_headers) -> None:
         for col_index, element in enumerate(row):
             header = str(element.strip())
+            #------------------------------------------------
+            if filter_headers:
+                if not header in filter_headers:
+                    print(f'Skipping {header}')
+                    continue
+            #------------------------------------------------
             self.headers.append(header)
             self.header_index[header] = col_index
             if pk == header:
                 self.pk = pk
                 self.pk_col_index = col_index
+        if filter_headers and not self.headers:
+            raise ValueError('No headers match with filter')
         if pk and not self.pk:
             print(f'[WARNING] Primary key {pk!r} not found in headers; continuing without a primary key')
         self.n_cols = len(self.headers)
@@ -134,21 +141,33 @@ class DataTable(TableFunctions, Convert, Export):
 
     def _set_placeholder_headers(self, row) -> None:
         # No header row: name columns col_1, col_2, ... from the first row's width
-        self.headers = [f'col_{n_col}' for n_col in range(1, len(row) + 1)]
+        self.headers = []
+        n_col = 1
+        while n_col <= len(row):
+            self.headers.append('col_' + str(n_col))
+            n_col = n_col + 1
         self.n_cols = len(self.headers)
 
-    def _parse_row(self, row, n_row, convert) -> list:
+    def _parse_row(self, row, n_row, filter_headers, convert) -> list:
         # Returns the cleaned row, or raises with the reason it was skipped
         if not isinstance(row, list):
             raise TypeError(f'Row {n_row}: expected a list, got {type(row).__name__}; skipping row')
-        if len(row) > self.n_cols:
+        if filter_headers:
+            for index in self.header_index.values():
+                if not index in range(1, len(row)):
+                    raise IndexError(f'Row {n_row}: Filtered header index not in range; skipping row')
+
+        elif len(row) > self.n_cols:
             raise IndexError(f'Row {n_row}: more values than columns (expected {self.n_cols}); skipping row')
-        if len(row) < self.n_cols:
+        elif len(row) < self.n_cols:
             raise IndexError(f'Row {n_row}: expected {self.n_cols} values, got {len(row)}; skipping row')
 
         row_data = []
-        for n_col, element in enumerate(row, start=1):
-            if self.pk and n_col == self.pk_col_index + 1:  # Add 1 because index starts at 0
+        for n_col_index, element in enumerate(row):
+            if filter_headers:
+                if not n_col_index in self.header_index.values():
+                    continue
+            if self.pk and n_col_index == self.pk_col_index:
                 if element is None or str(element).strip() == '':  # 0 is a valid key
                     raise ValueError(f'Row {n_row}: primary key value is empty; skipping row')
                 if str(element) in self.pk_hashmap:
@@ -157,12 +176,12 @@ class DataTable(TableFunctions, Convert, Export):
                 continue
 
             if not isinstance(element, (str, int, float, Decimal, date, type(None))):
-                raise TypeError(f'Row {n_row}, column {n_col}: unsupported type {type(element).__name__}; skipping row')
+                raise TypeError(f'Row {n_row}, column {(n_col_index+1)}: unsupported type {type(element).__name__}; skipping row')
             row_data.append(self._assigntype(element) if convert else element)
 
         return row_data
 
-    def _build_rows(self, rows_iter, pk=None, includes_headers=True, convert=True) -> None:
+    def _build_rows(self, rows_iter, pk=None, includes_headers=True, filter_headers=None, convert=True) -> None:
         # Builds self.table as LTL from any iterable of rows.
         # convert=False keeps values as-is (CSV values stay strings).
         if pk:
@@ -170,23 +189,26 @@ class DataTable(TableFunctions, Convert, Export):
         if includes_headers:
             print('[INFO] Treating first row as headers')
 
-
         # Row loop
         rows = []
         for n_row, row in enumerate(rows_iter, start=1):
             try:
+                #---------------------------------------------------
                 # First row decides the headers
                 if not self.headers:
                     if not isinstance(row, list):
                         raise TypeError(f'Row {n_row}: expected a list, got {type(row).__name__}; skipping row')
                     if includes_headers:
-                        self._set_headers(row, pk)
+                        self._set_headers(row, pk, filter_headers)
                         rows.append(self.headers)
-                        continue  # Header row is not data
-                    self._set_placeholder_headers(row)
-                    rows.append(self.headers)
-
-                row_data = self._parse_row(row, n_row, convert)
+                        continue
+                    else:
+                        self._set_placeholder_headers(row)
+                        rows.append(self.headers)
+                        continue
+                #---------------------------------------------------
+                # After assigning headers, append every following row:
+                row_data = self._parse_row(row, n_row, filter_headers, convert)
                 rows.append(row_data)
                 if self.pk:  # Only record PK once the row is accepted
                     self.pk_hashmap[row_data[self.pk_col_index]] = len(rows) - 1
@@ -202,16 +224,30 @@ class DataTable(TableFunctions, Convert, Export):
     # Loading function:
     # Funnels both startup methods, applying small checks and clearing class memory.
 
-    def _load(self, method, pk, includes_headers) -> None:
+    def _load(self, method, pk, includes_headers, filter_headers, convert: bool) -> None:
+
+        if filter_headers and not includes_headers: 
+            includes_headers = True # assume data includes headers
+
         if pk and not includes_headers:
             print('[WARNING] Primary key specified but includes_headers is False; continuing without a primary key')
             pk = None
 
+        if pk and not pk in filter_headers:
+            if isinstance(filter_headers, str):
+                filter_headers = [pk, filter_headers]
+            if isinstance(filter_headers, list):
+                new_filter = [pk]
+                for e in filter_headers:
+                    new_filter.append(e)
+                filter_headers = new_filter
+
         # Clear object memory
         self._defaults()
+        print('[INFO] Reset to default values')
 
         try:
-            method(pk, includes_headers)
+            method(pk, includes_headers, filter_headers, convert)
         except Exception as e:
             print(f'[ERROR] {e}')
 
@@ -220,21 +256,21 @@ class DataTable(TableFunctions, Convert, Export):
     # For each, it uses a different startup method to build to LTL format.
 
     # For in-memory data structures:
-    def load_from(self, data, pk=None, includes_headers=True) -> None:
-        def method(pk, includes_headers):
+    def load_from(self, data, pk: str=None, includes_headers=True, filter_headers: str | list[str] = None, convert=False) -> None:
+        def method(pk, includes_headers, filter_headers, convert):
             format = self._checkformat(data)
             print(f'[INFO] Detected format: {format}')
             if method != 'LTL':
                 raise TypeError(f'Unsupported format {format!r}; only LTL is currently supported')
-            self._build_rows(data, pk, includes_headers)
+            self._build_rows(data, pk, includes_headers, filter_headers, convert)
 
-        self._load(method, pk, includes_headers)
+        self._load(method, pk, includes_headers, filter_headers, convert)
 
 
     # For CSVs:
-    def load_csv(self, abs_path, pk=None, includes_headers=True) -> None:
-        def method(pk, includes_headers):
+    def load_csv(self, abs_path, pk: str=None, includes_headers=True, filter_headers: str | list[str] = None, convert=False) -> None:
+        def method(pk, includes_headers, filter_headers, convert):
             with open(abs_path, newline='', encoding='utf-8-sig') as f:
-                self._build_rows(csv.reader(f), pk, includes_headers, convert=False)
+                self._build_rows(csv.reader(f), pk, includes_headers, filter_headers, convert)
 
-        self._load(method, pk, includes_headers)
+        self._load(method, pk, includes_headers, filter_headers, convert)
