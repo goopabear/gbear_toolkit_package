@@ -154,7 +154,7 @@ class DataTable(TableFunctions, Convert, Export):
             raise TypeError(f'Row {n_row}: expected a list, got {type(row).__name__}; skipping row')
         if filter_headers:
             for index in self.header_index.values():
-                if not index in range(len(row)-1):
+                if not index in range(len(row)):
                     raise IndexError(f'Row {n_row}: Filtered header index {index!r} not in range(1-{len(row)}); skipping row')
         elif len(row) > self.n_cols:
             raise IndexError(f'Row {n_row}: more values than columns (expected {self.n_cols}); skipping row')
@@ -210,7 +210,7 @@ class DataTable(TableFunctions, Convert, Export):
                 row_data = self._parse_row(row, n_row, filter_headers, convert)
                 rows.append(row_data)
                 if self.pk:  # Only record PK once the row is accepted
-                    self.pk_hashmap[row_data[self.pk_col_index]] = len(rows) - 1
+                    self.pk_hashmap[row_data[self.headers.index(self.pk)]] = len(rows) - 1
 
             except Exception as e:
                 print(f'[ERROR] {e}')
