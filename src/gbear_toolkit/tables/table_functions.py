@@ -1,9 +1,8 @@
 
 class TableFunctions():
 
-    def __init__(self, table_name: str = 'data_table'):
+    def __init__(self):
         # Table starts as empty. Loads data from CSV and/or append from in-memory data.
-        self.table_name = table_name
         self._defaults()
 
     def _defaults(self) -> None:

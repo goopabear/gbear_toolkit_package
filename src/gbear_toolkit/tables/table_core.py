@@ -2,10 +2,12 @@ from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
 import csv
 
-from .table_export import Export
 from .table_functions import TableFunctions
+from .table_convert import Convert
+from .table_export import Export
 
-class DataTable(TableFunctions, Export):
+
+class DataTable(TableFunctions, Convert, Export):
     def __init__(self, table_name: str = 'data_table'):
         # Table starts as empty. Loads data from CSV and/or append from in-memory data.
         self.table_name = table_name
@@ -160,7 +162,7 @@ class DataTable(TableFunctions, Export):
 
         return row_data
 
-    def _ingest_rows(self, rows_iter, pk=None, includes_headers=True, convert=True) -> None:
+    def _build_rows(self, rows_iter, pk=None, includes_headers=True, convert=True) -> None:
         # Builds self.table as LTL from any iterable of rows.
         # convert=False keeps values as-is (CSV values stay strings).
         if pk:
@@ -168,6 +170,8 @@ class DataTable(TableFunctions, Export):
         if includes_headers:
             print('[INFO] Treating first row as headers')
 
+
+        # Row loop
         rows = []
         for n_row, row in enumerate(rows_iter, start=1):
             try:
@@ -195,9 +199,10 @@ class DataTable(TableFunctions, Export):
         self.format = 'LTL'
 
     # -----------------------------------------------------------------------------
-    # Loading functions
+    # Loading function:
+    # Funnels both startup methods, applying small checks and clearing class memory.
 
-    def _load(self, ingest, pk, includes_headers) -> None:
+    def _load(self, method, pk, includes_headers) -> None:
         if pk and not includes_headers:
             print('[WARNING] Primary key specified but includes_headers is False; continuing without a primary key')
             pk = None
@@ -206,23 +211,30 @@ class DataTable(TableFunctions, Export):
         self._defaults()
 
         try:
-            ingest(pk, includes_headers)
+            method(pk, includes_headers)
         except Exception as e:
             print(f'[ERROR] {e}')
 
+    # -----------------------------------------------------------------------------
+    # Two different types of loading:
+    # For each, it uses a different startup method to build to LTL format.
+
+    # For in-memory data structures:
     def load_from(self, data, pk=None, includes_headers=True) -> None:
-        def ingest(pk, includes_headers):
-            method = self._checkformat(data)
-            print(f'[INFO] Detected format: {method}')
+        def method(pk, includes_headers):
+            format = self._checkformat(data)
+            print(f'[INFO] Detected format: {format}')
             if method != 'LTL':
-                raise TypeError(f'Unsupported format {method!r}; only LTL is currently supported')
-            self._ingest_rows(data, pk, includes_headers)
+                raise TypeError(f'Unsupported format {format!r}; only LTL is currently supported')
+            self._build_rows(data, pk, includes_headers)
 
-        self._load(ingest, pk, includes_headers)
+        self._load(method, pk, includes_headers)
 
+
+    # For CSVs:
     def load_csv(self, abs_path, pk=None, includes_headers=True) -> None:
-        def ingest(pk, includes_headers):
+        def method(pk, includes_headers):
             with open(abs_path, newline='', encoding='utf-8-sig') as f:
-                self._ingest_rows(csv.reader(f), pk, includes_headers, convert=False)
+                self._build_rows(csv.reader(f), pk, includes_headers, convert=False)
 
-        self._load(ingest, pk, includes_headers)
+        self._load(method, pk, includes_headers)
