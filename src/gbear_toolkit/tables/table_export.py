@@ -3,8 +3,7 @@ import csv
 import os
 
 class Export():
-
-    def export_csv(abs_path: str, data, filename='export', timestamp=True):
+    def export_csv(self, abs_path: str, data: list[list], filename='export', timestamp=True):
         if timestamp:
             stamp = datetime.now().strftime("_%Y_%m_%d_%H%M%S")
 
@@ -15,9 +14,7 @@ class Export():
             writer = csv.writer(f)
             writer.writerows(data)
 
-
-
-    def append_csv(path, rows, header=None):
+    def append_csv(self, path, rows, header=None):
         write_header = header and (not os.path.exists(path) or os.path.getsize(path) == 0)
 
         with open(path, "a", newline="", encoding="utf-8") as f:

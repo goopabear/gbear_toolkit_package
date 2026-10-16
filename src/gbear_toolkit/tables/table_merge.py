@@ -87,16 +87,3 @@ class TableFunctions():
         
 
 
-
-
-            
-
-    
-    def xlookup():
-        print()
-
-
-
-    # Add new row, matching by column headers
-    def add_row():
-        print()

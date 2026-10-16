@@ -156,7 +156,6 @@ class DataTable(TableFunctions, Convert, Export):
             for index in self.header_index.values():
                 if not index in range(len(row)-1):
                     raise IndexError(f'Row {n_row}: Filtered header index {index!r} not in range(1-{len(row)}); skipping row')
-
         elif len(row) > self.n_cols:
             raise IndexError(f'Row {n_row}: more values than columns (expected {self.n_cols}); skipping row')
         elif len(row) < self.n_cols:
