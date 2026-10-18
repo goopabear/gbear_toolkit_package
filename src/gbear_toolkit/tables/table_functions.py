@@ -53,10 +53,31 @@ class TableFunctions():
     #==============================================================================================
     # Editting table:
 
+    def add_col(self, header: str, fill: function = None):
+        if isinstance(header, str):
+            self.table[0].append(header)
+
+            for n, row in enumerate(self.table[1:], start=1):
+                try:
+                    if fill:
+                        row.append(fill())
+                    else:
+                        row.append(None)
+                except Exception as e:
+                    print(f'[ERROR] Unexcepted error in row {n}: {e!r}')
+                    row.append(None)
+        else:
+            raise ValueError('Header must be a string')
+
+
     def remove_col(self, *headers: str):
         # Validate that arg headers are valid
         if not headers:
             print('No headers specified')
+            return
+
+        if not self.headers:
+            print('Table does not contain any columns')
             return
         
         for h in headers:
