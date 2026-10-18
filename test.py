@@ -5,6 +5,5 @@ from src.gbear_toolkit import ProjectPaths
 app = DataTable()
 p = ProjectPaths('gbear_toolkit_package')
 
-app.load_csv(abs_path=p.user_select(), filter_headers='ASIN')
-app.convert_dtl()
-print(app.table)
+app.load_csv(abs_path=p.path_to('tests', 'csv', 'sales.csv'), pk='order_id', filter_headers='region')
+app.append_csv(abs_path=p.path_to('tests'))

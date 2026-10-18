@@ -1,6 +1,5 @@
 
 class TableFunctions():
-
     def __init__(self):
         # Table starts as empty. Loads data from CSV and/or append from in-memory data.
         self._defaults()

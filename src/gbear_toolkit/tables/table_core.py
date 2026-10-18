@@ -232,14 +232,15 @@ class DataTable(TableFunctions, Convert, Export):
             print('[WARNING] Primary key specified but includes_headers is False; continuing without a primary key')
             pk = None
 
-        if pk and not pk in filter_headers:
-            if isinstance(filter_headers, str):
-                filter_headers = [pk, filter_headers]
-            if isinstance(filter_headers, list):
-                new_filter = [pk]
-                for e in filter_headers:
-                    new_filter.append(e)
-                filter_headers = new_filter
+        if filter_headers:
+            if pk and not pk in filter_headers:
+                if isinstance(filter_headers, str):
+                    filter_headers = [pk, filter_headers]
+                if isinstance(filter_headers, list):
+                    new_filter = [pk]
+                    for e in filter_headers:
+                        new_filter.append(e)
+                    filter_headers = new_filter
 
         # Clear object memory
         self._defaults()
