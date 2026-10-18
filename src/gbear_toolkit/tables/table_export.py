@@ -81,6 +81,6 @@ class Export():
             writer = csv.writer(f)
             if write_headers:
                 writer.writerow(self.table[0])
-                print('[INFO] Wrote new headers...')
+                print('[INFO] Destination was new or empty; wrote header row.')
             writer.writerows(self.table[1:])
             print(f'[INFO] Appended new rows to {output_path!r}')
