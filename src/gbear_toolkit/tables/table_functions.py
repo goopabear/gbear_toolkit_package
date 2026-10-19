@@ -74,7 +74,19 @@ class TableFunctions():
                 pass
 
         return s
-    
+
+
+    def _update_table(self, new_table, table_format: str=None):
+        # Update class attributes
+        self.table = new_table
+        if table_format:
+            self.format = table_format
+        self.n_cols = len(new_table[0])
+        self.headers = new_table[0]
+        self.header_index = {}
+        for index, header in enumerate(new_table[0]):
+            self.header_index[header] = index
+
     #==============================================================================================
     # Index helper functions:
 
@@ -95,16 +107,6 @@ class TableFunctions():
 
     #==============================================================================================
     # Editting table:
-
-    def _update_table(self, new_table):
-        # Update class attributes
-        self.table = new_table
-        self.n_cols = len(new_table[0])
-        self.headers = new_table[0]
-        self.header_index = {}
-        for index, header in enumerate(new_table[0]):
-            self.header_index[header] = index
-
 
     def add_col(self, header: str, fill: list = None):
         #-------------------------------------------------------
@@ -223,3 +225,11 @@ class TableFunctions():
         except Exception as e:
             print(f'[UNEXPECTED_ERROR] {e}')
             return None
+
+    def get_col_uniques(self, header: str) -> list:
+        i = self._col_index(header)
+        col = []
+        for row in self.table[1:]:
+            col.append(row[i])
+
+        return list(set(col))

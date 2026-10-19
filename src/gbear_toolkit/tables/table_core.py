@@ -80,8 +80,20 @@ class DataTable(TableFunctions, Convert, Export):
                 pass
 
         return s
+
     
-    # -----------------------------------------------------------------------------
+    def _update_table(self, new_table, table_format: str=None):
+        # Update class attributes
+        self.table = new_table
+        if table_format:
+            self.format = table_format
+        self.n_cols = len(new_table[0])
+        self.headers = new_table[0]
+        self.header_index = {}
+        for index, header in enumerate(new_table[0]):
+            self.header_index[header] = index
+    # -----------------------------------------------------------
+    # ------------------
     # First, loading from in-memory: LTL and LTD only.
 
     # Returns format of data
@@ -215,7 +227,7 @@ class DataTable(TableFunctions, Convert, Export):
                 print(f'[ERROR] {e}')
 
         print(f'[INFO] Load complete: {len(rows)} rows loaded')
-        self.table = rows
+        self._update_table(new_table=rows)
         self.format = 'LTL'
 
     # -----------------------------------------------------------------------------
