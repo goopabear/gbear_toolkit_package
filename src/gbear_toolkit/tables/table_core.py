@@ -271,7 +271,7 @@ class DataTable(TableFunctions, Convert, Export):
         def method(pk, includes_headers, filter_headers, convert):
             format = self._checkformat(data)
             print(f'[INFO] Detected format: {format}')
-            if method != 'LTL':
+            if format != 'LTL':
                 raise TypeError(f'Unsupported format {format!r}; only LTL is currently supported')
             self._build_rows(data, pk, includes_headers, filter_headers, convert)
 
