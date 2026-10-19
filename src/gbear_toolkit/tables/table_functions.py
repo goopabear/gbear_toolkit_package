@@ -53,22 +53,41 @@ class TableFunctions():
     #==============================================================================================
     # Editting table:
 
-    def add_col(self, header: str, fill: Callable[[], Any] | None = None):
-        if isinstance(header, str):
-            self.table[0].append(header)
+    def _update_table(self, new_table):
+        # Update class attributes
+        self.table = new_table
+        self.n_cols = len(new_table[0])
+        self.headers = new_table[0]
+        self.header_index = {}
+        for index, header in enumerate(new_table[0]):
+            self.header_index[header] = index
 
-            for n, row in enumerate(self.table[1:], start=1):
-                try:
-                    if fill:
-                        row.append(fill())
-                    else:
+
+    def add_col(self, header: str, fill: Callable[[], Any] | None = None):
+        new_table = self.table
+        if isinstance(header, str):
+            new_table[0].append(header)
+            
+            try:
+                for n, row in enumerate(new_table[1:], start=1):
+                    try:
+                        if fill:
+                            row.append(fill)
+                        else:
+                            row.append(None)
+
+                    except Exception as e:
+                        print(f'[ERROR] Row {n}: {e!r}')
                         row.append(None)
-                except Exception as e:
-                    print(f'[ERROR] Unexcepted error in row {n}: {e!r}')
-                    row.append(None)
+            except:
+                raise
+            
+            else:
+                self._update_table(new_table)
+
         else:
             raise ValueError('Header must be a string')
-
+        
 
     def remove_col(self, *headers: str):
         # Validate that arg headers are valid
@@ -107,12 +126,7 @@ class TableFunctions():
 
         #-------------------------------------------------------
         # Update class attributes
-        self.table = new_table
-        self.n_cols = len(new_table[0])
-        self.headers = new_table[0]
-        self.header_index = {}
-        for index, header in enumerate(new_table[0]):
-            self.header_index[header] = index
+        self._update_table(new_table)
 
     #==============================================================================================
     # Returning table values:

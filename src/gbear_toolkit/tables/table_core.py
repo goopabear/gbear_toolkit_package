@@ -124,7 +124,6 @@ class DataTable(TableFunctions, Convert, Export):
             #------------------------------------------------
             if filter_headers:
                 if not header in filter_headers:
-                    print(f'Skipping {header}')
                     continue
             #------------------------------------------------
             self.headers.append(header)
