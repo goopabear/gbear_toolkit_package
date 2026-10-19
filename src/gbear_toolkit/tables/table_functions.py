@@ -1,3 +1,4 @@
+from typing import Callable, Any
 
 class TableFunctions():
     def __init__(self):
@@ -52,7 +53,7 @@ class TableFunctions():
     #==============================================================================================
     # Editting table:
 
-    def add_col(self, header: str, fill: function = None):
+    def add_col(self, header: str, fill: Callable[[], Any] | None = None):
         if isinstance(header, str):
             self.table[0].append(header)
 

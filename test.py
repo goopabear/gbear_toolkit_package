@@ -6,4 +6,8 @@ app = DataTable()
 p = ProjectPaths('gbear_toolkit_package')
 
 app.load_csv(abs_path=p.path_to('tests', 'csv', 'sales.csv'), pk='order_id', filter_headers='region')
-app.append_csv(abs_path=p.path_to('tests'))
+
+def v():
+    return 2
+app.add_col(header='priority', fill=v)
+print(app.table)
