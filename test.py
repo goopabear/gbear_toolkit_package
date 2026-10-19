@@ -7,10 +7,13 @@ p = ProjectPaths('gbear_toolkit_package')
 
 app.load_csv(abs_path=p.path_to('tests', 'csv', 'sales.csv'), pk='order_id', filter_headers='region')
 
-def v(**kwargs):
-    row = kwargs.pop('row', None)
-    print(row)
-    return 2
+def fill():
+    col = app.get_col('order_id',)
+    print(col)
+    #for row in col[1:]:
 
-app.add_col(header='priority', fill=v)
-print(app.table)
+
+print(fill())
+
+#app.add_col('add', fill)
+#print(app.table)

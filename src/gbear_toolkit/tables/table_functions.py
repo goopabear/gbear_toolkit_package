@@ -1,3 +1,5 @@
+from datetime import datetime, date
+from decimal import Decimal, InvalidOperation
 from typing import Callable, Any
 
 class TableFunctions():
@@ -32,6 +34,48 @@ class TableFunctions():
         self.pk_col_index: int | None = None
         self.pk_hashmap: dict[str, int] = {}
 
+
+    def _assigntype(self, value):
+        # Normalizes a value for CSV output. Decimals and dates come back as strings:
+        #   Decimal('1E+3') -> '1000', date(2024, 3, 5) -> '2024-03-05'
+        DATE_FORMATS = ("%Y-%m-%d", "%Y/%m/%d", "%d-%b-%Y", "%B %d, %Y")
+
+        # Non-string inputs (in-memory data)
+        if value is None or isinstance(value, (bool, int, float)):
+            return value
+        if isinstance(value, Decimal):
+            return format(value, 'f') if value.is_finite() else None
+        if isinstance(value, datetime):  # check before date; datetime subclasses date
+            return value.isoformat(sep=' ')
+        if isinstance(value, date):
+            return value.isoformat()
+
+        s = str(value).strip()
+
+        if not s:
+            return None
+
+        try:
+            return int(s)
+        except ValueError:
+            pass
+
+        try:
+            d = Decimal(s)
+        except InvalidOperation:
+            pass
+        else:
+            if d.is_finite():          # reject "NaN", "Infinity", "-inf"
+                return format(d, 'f')
+
+        for fmt in DATE_FORMATS:
+            try:
+                return datetime.strptime(s, fmt).date().isoformat()
+            except ValueError:
+                pass
+
+        return s
+    
     #==============================================================================================
     # Index helper functions:
 
@@ -81,7 +125,7 @@ class TableFunctions():
                         row.append(None)
             except:
                 raise
-            
+
             else:
                 self._update_table(new_table)
 
@@ -149,9 +193,9 @@ class TableFunctions():
             return None
 
 
-    def get_col(self, header: str, col_header=True) -> list:
+    def get_col(self, header: str, incl_header=True, incl_types=True) -> list:
         try:
-            if col_header:
+            if incl_header:
                 index=0
             else:
                 index=1
@@ -160,7 +204,10 @@ class TableFunctions():
             col_index = self._col_index(header)
 
             for row in self.table[index:]:
-                column.append(row[col_index])
+                if incl_types:
+                    column.append(self._assigntype(row[col_index]))
+                else:
+                    column.append(row[col_index])
 
             return column
         
