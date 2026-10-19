@@ -1,6 +1,5 @@
 from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
-from typing import Callable, Any
 
 class TableFunctions():
     def __init__(self):
@@ -107,30 +106,40 @@ class TableFunctions():
             self.header_index[header] = index
 
 
-    def add_col(self, header: str, fill: Callable[[], Any] | None = None):
-        new_table = self.table
-        if isinstance(header, str):
-            new_table[0].append(header)
-            
-            try:
-                for n, row in enumerate(new_table[1:], start=1):
-                    try:
-                        if fill:
-                            row.append(fill)
-                        else:
-                            row.append(None)
+    def add_col(self, header: str, fill: list = None):
+        #-------------------------------------------------------
+        # Validation checks
+        n_rows = len(self.table) - 1
+        if not isinstance(fill, list):
+            raise TypeError('fill must be a list')
+        if fill and len(fill) != n_rows:
+            raise ValueError(f'fill has {len(fill)} values but the table has {n_rows} rows; they must match')
+        if not isinstance(header, str):
+            raise ValueError('header must be a string')
+        
+        #-------------------------------------------------------
+        # Create copy of original table by iterating.
+        new_table = []
+        for row in self.table:
+            new_table.append(row)
 
-                    except Exception as e:
-                        print(f'[ERROR] Row {n}: {e!r}')
+        new_table[0].append(header)
+        
+        try:
+            for n, row in enumerate(new_table[1:]):
+                try:
+                    if fill:
+                        row.append(fill[n])
+                    else:
                         row.append(None)
-            except:
-                raise
-
-            else:
-                self._update_table(new_table)
+                except Exception as e:
+                    print(f'[ERROR] Row {n}: {e!r}')
+                    row.append(None)
+        except Exception as e:
+            raise Exception(e)
 
         else:
-            raise ValueError('Header must be a string')
+            self._update_table(new_table)            
         
 
     def remove_col(self, *headers: str):
@@ -156,7 +165,7 @@ class TableFunctions():
         for existing, column_index in self.header_index.items():
             if existing not in headers:
                 remaining.append(column_index)
-        if len(existing) < 1:
+        if len(remaining) < 1:
             raise ValueError(f'[ERROR] At least one column, PK, must remain')
 
         #-------------------------------------------------------
