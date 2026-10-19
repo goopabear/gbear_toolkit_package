@@ -112,7 +112,7 @@ class TableFunctions():
         #-------------------------------------------------------
         # Validation checks
         n_rows = len(self.table) - 1
-        if not isinstance(fill, list):
+        if fill and not isinstance(fill, list):
             raise TypeError('fill must be a list')
         if fill and len(fill) != n_rows:
             raise ValueError(f'fill has {len(fill)} values but the table has {n_rows} rows; they must match')
