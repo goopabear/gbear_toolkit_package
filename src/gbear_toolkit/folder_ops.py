@@ -22,6 +22,19 @@ def copy(src_path: str, dest_path: str, src: str = 'csv', dest: str = 'tmp'):
         print(f"Error copying CSV files: {e}\n")
         return
 
+def list_files(abs_path: str):
+    try:
+        entries = os.listdir(abs_path)
+        files = []
+        for entry in entries:
+            full_path = os.path.join(abs_path, entry)
+            if os.path.isfile(full_path):
+                files.append(entry)
+        return files
+    except Exception as e:
+        print(f"Error listing files in '{abs_path}': {e}\n")
+        return None
+
 def delete(abs_path: str, name: str):
     tmp_folder = os.path.join(abs_path, name) 
     # Relative path from root to "tmp"
