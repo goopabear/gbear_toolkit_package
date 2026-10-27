@@ -90,14 +90,14 @@ class TableFunctions():
     #==============================================================================================
     # Index helper functions:
 
-    def _col_index(self, header: str) -> int:
+    def col_index(self, header: str) -> int:
         if header in self.headers:
             return self.header_index[header]
         else:
             raise ValueError(f'{header!r} not found in the header row')
 
 
-    def _row_index(self, pk_value: str) -> int:
+    def row_index(self, pk_value: str) -> int:
         if not self.pk:
             raise ValueError('Row indexing only works with PK enabled')
         if pk_value in self.pk_hashmap:
@@ -186,10 +186,10 @@ class TableFunctions():
     #==============================================================================================
     # Returning table values:
 
-    def get_cell(self, pk_value: str, header: str):
+    def get_value(self, pk_value: str, header: str):
         try:
-            col_n = self._col_index(header)
-            row_n = self._row_index(pk_value)
+            col_n = self.col_index(header)
+            row_n = self.row_index(pk_value)
             return self.table[row_n][col_n]
         except Exception as e:
             print(f'[ERROR] {e}')
@@ -197,7 +197,7 @@ class TableFunctions():
 
     def get_row(self, pk_value: str) -> list:
         try:
-            row_n = self._row_index(pk_value)
+            row_n = self.row_index(pk_value)
             return self.table[row_n]
         except Exception as e:
             print(f'[ERROR] {e}')
@@ -212,7 +212,7 @@ class TableFunctions():
                 index=1
 
             column = []
-            col_index = self._col_index(header)
+            col_index = self.col_index(header)
 
             for row in self.table[index:]:
                 if incl_types:
@@ -227,7 +227,7 @@ class TableFunctions():
             return None
 
     def get_col_uniques(self, header: str) -> list:
-        i = self._col_index(header)
+        i = self.col_index(header)
         col = []
         for row in self.table[1:]:
             col.append(row[i])
